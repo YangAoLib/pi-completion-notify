@@ -8,6 +8,43 @@ Windows + WezTerm 的轻量 Pi 全局插件。AI 本轮执行完全结束后显�
 
 需要支持 `agent_settled` 事件的 Pi、Windows x64、WezTerm 和 PowerShell 7。测试使用 Node.js 24 或更高版本。本项目不修改 Pi 源码或安装其它 Pi 扩展。
 
+### 方法一：pi install（推荐）
+
+```powershell
+pi install git:github.com/YangAoLib/pi-completion-notify
+```
+
+默认全局安装目录为 `~/.pi/agent/git/github.com/YangAoLib/pi-completion-notify`。然后编译并注册桌面通知程序：
+
+```powershell
+$agentDir = if ($env:PI_CODING_AGENT_DIR) { $env:PI_CODING_AGENT_DIR } else { "$HOME/.pi/agent" }
+$pluginDir = "$agentDir/git/github.com/YangAoLib/pi-completion-notify"
+pwsh -NoProfile -File "$pluginDir/windows/install.ps1"
+```
+
+WezTerm 配置使用实际安装路径：
+
+```lua
+local agent_dir = os.getenv('PI_CODING_AGENT_DIR') or (wezterm.home_dir .. '/.pi/agent')
+local ok, completion = pcall(dofile, agent_dir .. '/git/github.com/YangAoLib/pi-completion-notify/wezterm.lua')
+if ok then completion.setup() end
+```
+
+在 Pi 执行 `/reload`，再执行 `/completion-notify test` 验证。
+
+只安装包不会自动修改 Windows 开始菜单或 WezTerm 配置，上述步骤需显式执行。仓库未发布到 npm，请使用 Git 来源，不要运行 `pi install npm:pi-completion-notify`。
+
+更新：
+
+```powershell
+pi update git:github.com/YangAoLib/pi-completion-notify
+pwsh -NoProfile -File "$pluginDir/windows/install.ps1"
+```
+
+更新前关闭现有 Pi 会话，并归档本地 `data/`：包管理器可能重置/清理 Git 安装目录中的本地产物，更新后需重新编译。若之前手动克隆到 `extensions/pi-completion-notify`，请先归档并移走那份目录，再启用 Git 包，避免重复加载、重复通知。WezTerm 也只保留一个版本的加载段。
+
+### 方法二：手动克隆
+
 将仓库克隆到全局扩展目录（如果已有该目录，请先备份，不要覆盖）：
 
 ```powershell
@@ -84,4 +121,10 @@ wezterm --config-file <扩展绝对目录>/tests/wezterm.lua show-keys --lua
 pwsh -NoProfile -File "$HOME/.pi/agent/extensions/pi-completion-notify/windows/uninstall.ps1"
 ```
 
-移除 WezTerm Lua 中的加载段；归档 `data/` 后移走本扩展目录。卸载脚本只删除本扩展快捷方式和二进制，不修改 WezTerm 本体、系统通知权限或历史备份。
+上面的路径适用于手动克隆安装。`pi install` 安装时，先用实际 `$pluginDir/windows/uninstall.ps1` 卸载辅助程序，移除 WezTerm 加载段、归档 `data/`，然后执行：
+
+```powershell
+pi remove git:github.com/YangAoLib/pi-completion-notify
+```
+
+手动安装则移走扩展目录。卸载脚本只删除本扩展快捷方式和二进制，不修改 WezTerm 本体、系统通知权限或历史备份。
