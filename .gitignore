@@ -1,0 +1,32 @@
+# 本机数据、备份、日志和编译产物不发布
+/data/
+/windows/bin/
+/windows/obj/
+node_modules/
+dist/
+coverage/
+*.log
+*.jsonl
+*.tmp
+*.bak
+*.lnk
+*.exe
+*.dll
+*.pdb
+*.tsbuildinfo
+
+# 认证、环境与机器配置
+.env
+.env.*
+!.env.example
+/auth.json
+/settings.json
+/credentials.json
+/.pi/
+
+# 编辑器和系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
