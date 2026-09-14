@@ -91,6 +91,8 @@ export function setup(args = process.argv.slice(2)) {
       try { fs.writeFileSync(temp, after, { flag: 'wx' }); fs.renameSync(temp, configPath); }
       finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
     }
+    fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
+    fs.writeFileSync(path.join(ROOT, 'data', 'installation.json'), JSON.stringify({ version: 1, root: ROOT, configPath }, null, 2) + '\n');
     console.log(`初始化完成：${configPath}。${backup ? '原配置已备份到扩展 data/backups。' : ''}`);
     console.log('请在已运行的 Pi 中 /reload，然后 /completion-notify test。');
   } catch (error) {

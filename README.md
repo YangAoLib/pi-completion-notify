@@ -128,18 +128,27 @@ wezterm --config-file <扩展绝对目录>/tests/wezterm.lua show-keys --lua
 
 测试不点击真实按钮。实机验收用 `/completion-notify test`，桌面按钮行为须人工验证。
 
-## 卸载
+## 统一卸载
 
-先退出 Pi，再执行（支持 `-WhatIf`）：
+先退出使用此插件的 Pi 会话，然后执行（`$pluginDir` 为实际安装目录）：
 
 ```powershell
-pwsh -NoProfile -File "$HOME/.pi/agent/extensions/pi-completion-notify/windows/uninstall.ps1"
+npm --prefix "$pluginDir" run teardown -- --dry-run
+npm --prefix "$pluginDir" run teardown
 ```
 
-上面的路径适用于手动克隆安装。`pi install` 安装时，先用实际 `$pluginDir/windows/uninstall.ps1` 卸载辅助程序，移除 WezTerm 加载段、归档 `data/`，然后执行：
+支持 `--config <绝对路径>`；默认优先使用 setup 记录在 `data/installation.json` 的配置路径。仅删除内容与当前包一致的受管块，不覆盖用户其它设置；快捷方式同时校验 AppID 和目标程序路径。标记损坏、其它安装接管或旧手工加载段会停止，需人工处理；部分系统资源可能已清理，可修复后重复执行。
+
+teardown 会备份修改前的 WezTerm 配置，并移除本包快捷方式与二进制，但**保留源码及 data**。先把需要的 `data/` 归档到包目录之外，再卸载 Git 包：
 
 ```powershell
 pi remove git:github.com/YangAoLib/pi-completion-notify
 ```
 
-手动安装则移走扩展目录。卸载脚本只删除本扩展快捷方式和二进制，不修改 WezTerm 本体、系统通知权限或历史备份。
+Pi 删除 Git 包不会调用卸载钩子，不能只执行 pi remove。手动克隆版则在 teardown 后移走目录。底层 `windows/uninstall.ps1 -WhatIf` 仍可单独预览系统资源清理，不处理 Lua。
+
+### npm 安装脚本权限
+
+不同 npm 版本、`ignore-scripts` 和依赖 `allowScripts` 策略会影响生命周期脚本。不能简单认为所有新版 npm 都禁用 postinstall，也不能将依赖审批警告等同于根项目脚本没有执行。若没有看到“初始化完成”，优先显式执行 `npm --prefix "$pluginDir" run setup`；即使启用了 ignore-scripts，npm run 仍执行被明确指定的 setup，不执行前后置脚本。
+
+不建议全局关闭脚本保护，也不使用 dangerously-allow-all-scripts。`pi install` 不保证透传 npm 专属参数，不能直接给它追加 --allow-scripts。

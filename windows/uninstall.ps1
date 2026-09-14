@@ -8,7 +8,12 @@ if(Test-Path -LiteralPath $Shortcut) {
   $Shell = New-Object -ComObject Shell.Application
   try {
     $Item = $Shell.NameSpace($Programs).ParseName('Pi Completion Notify.lnk')
-    if($Item.ExtendedProperty('System.AppUserModel.ID') -ne 'Pi.CompletionNotify') { throw '快捷方式身份不符，拒绝删除' }
+    $Expected = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'bin/CompletionToast.exe'))
+    $Actual = $Item.ExtendedProperty('System.Link.TargetParsingPath')
+    if($Item.ExtendedProperty('System.AppUserModel.ID') -ne 'Pi.CompletionNotify' -or
+       -not $Actual -or [IO.Path]::GetFullPath($Actual) -ne $Expected) {
+      throw '快捷方式身份或目标不属于当前安装，拒绝删除'
+    }
   } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($Shell) }
   if($PSCmdlet.ShouldProcess($Shortcut, '删除完成通知快捷方式')) { Remove-Item -LiteralPath $Shortcut }
 }
