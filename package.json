@@ -1,6 +1,6 @@
 {
   "name": "pi-completion-notify",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Pi 完成通知：Windows 桌面提醒及一键打开对应 WezTerm pane",
   "type": "module",
@@ -9,6 +9,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/YangAoLib/pi-completion-notify.git"
+  },
+  "scripts": {
+    "postinstall": "node setup.mjs --postinstall",
+    "setup": "node setup.mjs"
   },
   "pi": {
     "extensions": ["./index.ts"]

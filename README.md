@@ -14,15 +14,19 @@ Windows + WezTerm 的轻量 Pi 全局插件。AI 本轮执行完全结束后显�
 pi install git:github.com/YangAoLib/pi-completion-notify
 ```
 
-默认全局安装目录为 `~/.pi/agent/git/github.com/YangAoLib/pi-completion-notify`。然后编译并注册桌面通知程序：
+安装过程中 `postinstall` 自动编译 Windows 通知程序、注册独立快捷方式，并备份/合并 WezTerm 配置。正常情况下只需这一条安装命令，再在已运行的 Pi 中 `/reload`。
+
+默认全局安装目录为 `~/.pi/agent/git/github.com/YangAoLib/pi-completion-notify`。如果 npm 禁止生命周期脚本或自动初始化失败，使用独立修复入口：
 
 ```powershell
 $agentDir = if ($env:PI_CODING_AGENT_DIR) { $env:PI_CODING_AGENT_DIR } else { "$HOME/.pi/agent" }
 $pluginDir = "$agentDir/git/github.com/YangAoLib/pi-completion-notify"
-pwsh -NoProfile -File "$pluginDir/windows/install.ps1"
+npm --prefix "$pluginDir" run setup
+# 自定义配置位置时显式指定：
+npm --prefix "$pluginDir" run setup -- --config "$HOME/.wezterm.lua"
 ```
 
-WezTerm 配置使用实际安装路径：
+初始化脚本自动写入实际安装路径，不需要手动加 Lua。若要完全手动安装，等价加载段示例为：
 
 ```lua
 local agent_dir = os.getenv('PI_CODING_AGENT_DIR') or (wezterm.home_dir .. '/.pi/agent')
@@ -32,13 +36,14 @@ if ok then completion.setup() end
 
 在 Pi 执行 `/reload`，再执行 `/completion-notify test` 验证。
 
-只安装包不会自动修改 Windows 开始菜单或 WezTerm 配置，上述步骤需显式执行。仓库未发布到 npm，请使用 Git 来源，不要运行 `pi install npm:pi-completion-notify`。
+自动化需要 npm 允许运行 `postinstall`；不会绕过 `ignore-scripts` 或 `allow-scripts`。脚本失败会明确提示修复入口，postinstall 保留包安装结果，显式 setup 失败返回非零。仓库未发布到 npm，请使用 Git 来源，不要运行 `pi install npm:pi-completion-notify`。
 
 更新：
 
 ```powershell
 pi update git:github.com/YangAoLib/pi-completion-notify
-pwsh -NoProfile -File "$pluginDir/windows/install.ps1"
+# 若更新阶段禁用了生命周期脚本，再执行：
+npm --prefix "$pluginDir" run setup
 ```
 
 更新前关闭现有 Pi 会话，并归档本地 `data/`：包管理器可能重置/清理 Git 安装目录中的本地产物，更新后需重新编译。若之前手动克隆到 `extensions/pi-completion-notify`，请先归档并移走那份目录，再启用 Git 包，避免重复加载、重复通知。WezTerm 也只保留一个版本的加载段。
@@ -65,6 +70,16 @@ if ok then completion.setup() end
 ```
 
 Pi 执行 `/reload` 后生效。
+
+## 自动初始化规则
+
+- 仅支持 Windows x64；非 Windows 跳过初始化，不修改本机配置。
+- 选择配置路径：`--config` → `WEZTERM_CONFIG_FILE` → XDG 或用户默认文件。发现多份候选配置时要求显式指定，不猜测当前生效文件。
+- `-- BEGIN/END pi-completion-notify managed` 标记之间的块由 setup 维护，重复运行不重复插入，不改主题、字体和快捷键；路径使用 Lua 长字符串，不拼接可执行命令。
+- 配置修改前原字节备份到 `data/backups/`；只接受 UTF-8，拒绝符号链接目标、损坏标记和并发修改。构建失败不修改 WezTerm 配置；快捷方式/编译产物可能已创建，修复后可重跑或使用卸载脚本移除。
+- 检测到旧版手工 `pi-completion-notify/wezterm.lua` 加载段时停止，需用户先备份并移除该段再运行 setup；不会盲删用户 Lua。检测到其它位置的旧手动扩展时停止，需先归档并移走以免重复通知。
+- 没有 WezTerm 配置时创建最小配置；不自动更改 Windows 通知权限、不发送测试通知、不关闭现有 Pi 进程。
+- 卸载时删除受管标记块，不能把整个原配置覆盖回旧备份，避免丢失用户后续修改。
 
 ## 使用
 
@@ -107,7 +122,7 @@ Pi 执行 `/reload` 后生效。
 ## 测试
 
 ```bash
-node --test tests/*.test.ts
+node --test tests/*.test.ts tests/*.test.mjs
 wezterm --config-file <扩展绝对目录>/tests/wezterm.lua show-keys --lua
 ```
 
