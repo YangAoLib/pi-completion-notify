@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeConfig, resolveConfig } from '../setup.mjs';
+import { detectInstalledTerminals, mergeConfig, parseTerminalSelection, resolveConfig } from '../setup.mjs';
 import path from 'node:path';
 
 test('插入受管块，原主题与 return 保持不变，重复执行幂等', () => {
@@ -35,4 +35,27 @@ test('配置来源优先环境变量，多份文件时不猜测', () => {
   assert.throws(() => resolveConfig({ WEZTERM_CONFIG_FILE: 'relative.lua' }, home, () => true));
   assert.throws(() => resolveConfig({}, home, () => true));
   assert.equal(resolveConfig({}, home, () => false), path.join(home, '.wezterm.lua'));
+});
+test('安装时可显式选择终端，both 展开为两个', () => {
+  assert.deepEqual(parseTerminalSelection('windows-terminal'), ['windows-terminal']);
+  assert.deepEqual(parseTerminalSelection('wezterm, windows-terminal'), ['wezterm', 'windows-terminal']);
+  assert.deepEqual(parseTerminalSelection('both'), ['wezterm', 'windows-terminal']);
+  assert.throws(() => parseTerminalSelection('unknown'));
+  assert.throws(() => parseTerminalSelection(''));
+});
+test('未显式指定时按已安装应用自动检测', () => {
+  const home = path.resolve('test-home');
+  const wt = detectInstalledTerminals({ PATH: 'C:\\bin' }, home,
+    () => false, name => name === 'wt.exe' ? 'C:\\bin\\wt.exe' : undefined);
+  assert.deepEqual(wt, ['windows-terminal']);
+  const wez = detectInstalledTerminals({ PATH: 'C:\\bin' }, home,
+    location => location === path.join(home, '.wezterm.lua'), () => undefined);
+  assert.deepEqual(wez, ['wezterm']);
+  const wezConfig = path.join(home, '.wezterm.lua');
+  const wtAlias = path.join(home, 'AppData', 'Local', 'Microsoft', 'WindowsApps', 'wt.exe');
+  const both = detectInstalledTerminals({ PATH: '', LOCALAPPDATA: path.join(home, 'AppData', 'Local') }, home,
+    location => location === wezConfig || location === wtAlias, () => undefined);
+  assert.deepEqual(both, ['wezterm', 'windows-terminal']);
+  assert.deepEqual(detectInstalledTerminals({ PATH: '', WT_SESSION: 'abc' }, home, () => false, () => undefined), ['windows-terminal']);
+  assert.deepEqual(detectInstalledTerminals({ PATH: '' }, home, () => false, () => undefined), []);
 });
