@@ -25,4 +25,4 @@ try {
   $Item = $Shell.NameSpace($Programs).ParseName('Pi Completion Notify.lnk')
   if($Item.ExtendedProperty('System.AppUserModel.ID') -ne 'Pi.CompletionNotify') { throw '快捷方式身份验证失败' }
 } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($Shell) }
-Write-Output '已编译并注册 Pi 完成通知。请加载 WezTerm 集成并在 Pi /reload 后执行 /completion-notify test。'
+Write-Output '已编译并注册 Pi 完成通知。请在 Pi /reload 后执行 /completion-notify test。'
