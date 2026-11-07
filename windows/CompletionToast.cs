@@ -12,10 +12,22 @@ using Windows.UI.Notifications;
 class CompletionToast {
   [DllImport("shell32.dll", CharSet=CharSet.Unicode)]
   static extern int SetCurrentProcessExplicitAppUserModelID(string id);
+  [DllImport("user32.dll")]
+  static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")]
+  static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)]
+  static extern int GetClassName(IntPtr hWnd, StringBuilder name, int count);
   static readonly object sync = new object();
   static readonly JavaScriptSerializer json = new JavaScriptSerializer();
   static void Emit(string kind, string id) {
     lock(sync) { Console.WriteLine(json.Serialize(new { kind = kind, id = id })); Console.Out.Flush(); }
+  }
+  static bool IsWindowsTerminalWindow(IntPtr hwnd) {
+    if (hwnd == IntPtr.Zero) return false;
+    var name = new StringBuilder(256);
+    if (GetClassName(hwnd, name, name.Capacity) <= 0) return false;
+    return string.Equals(name.ToString(), "CASCADIA_HOSTING_WINDOW_CLASS", StringComparison.Ordinal);
   }
   [MTAThread]
   static int Main() {
@@ -34,6 +46,12 @@ class CompletionToast {
       long deadline = Convert.ToInt64(input["deadline"]);
       long remaining = deadline - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
       if(remaining <= 0 || remaining > 600000) return 2;
+      IntPtr focusHwnd = IntPtr.Zero;
+      object focusValue;
+      if(input.TryGetValue("focusHwnd", out focusValue)) {
+        long rawHandle;
+        if(long.TryParse(Convert.ToString(focusValue), out rawHandle) && rawHandle > 0) focusHwnd = new IntPtr(rawHandle);
+      }
       SetCurrentProcessExplicitAppUserModelID("Pi.CompletionNotify");
       notifier = ToastNotificationManager.CreateToastNotifier("Pi.CompletionNotify");
       var xml = new XmlDocument();
@@ -47,7 +65,12 @@ class CompletionToast {
       toast.ExpirationTime = DateTimeOffset.FromUnixTimeMilliseconds(deadline);
       toast.Activated += (sender, args) => {
         var value = args as ToastActivatedEventArgs;
-        if(value != null && value.Arguments == "open") Emit("open", id);
+        if(value == null || value.Arguments != "open") return;
+        if(IsWindowsTerminalWindow(focusHwnd)) {
+          ShowWindow(focusHwnd, 3);
+          SetForegroundWindow(focusHwnd);
+        }
+        Emit("open", id);
       };
       toast.Failed += (sender, args) => { Emit("error", id); done.Set(); };
       var reader = new Thread(() => { try { Console.ReadLine(); } catch {} finally { done.Set(); } });

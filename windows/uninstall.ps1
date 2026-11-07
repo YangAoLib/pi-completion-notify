@@ -19,4 +19,4 @@ if(Test-Path -LiteralPath $Shortcut) {
 }
 $Binary = Join-Path $PSScriptRoot 'bin/CompletionToast.exe'
 if((Test-Path -LiteralPath $Binary) -and $PSCmdlet.ShouldProcess($Binary, '删除通知辅助程序')) { Remove-Item -LiteralPath $Binary }
-Write-Output '卸载后请移除 WezTerm 配置中的本扩展加载段，并退出 Pi 后移走扩展目录。'
+Write-Output '卸载后请按安装记录清理 WezTerm 加载段（如启用），并退出 Pi 后移走扩展目录。'
